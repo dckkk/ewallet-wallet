@@ -33,3 +33,21 @@ type WalletHistoryParam struct {
 	Limit                 int    `form:"limit"`
 	WalletTransactionType string `form:"wallet_transaction_type"`
 }
+
+type WalletLink struct {
+	ID           int       `json:"id"`
+	WalletID     int       `json:"wallet_id" gorm:"column:wallet_id" validate:"required"`
+	ClientSource string    `json:"client_source" gorm:"column:client_source;type:varchar(100)"`
+	OTP          string    `json:"otp" gorm:"column:otp;type:varchar(6)"`
+	Status       string    `json:"status" gorm:"column:status;type:varchar(10)"`
+	CreatedAt    time.Time `json:"-"`
+	UpdatedAt    time.Time `json:"-"`
+}
+
+func (*WalletLink) TableName() string {
+	return "wallet_links"
+}
+
+type WalletStructOTP struct {
+	OTP string `json:"otp" validate:"required"`
+}

@@ -23,5 +23,5 @@ func SetupMySQL() {
 
 	logrus.Info("Successfully connect to database..")
 
-	DB.AutoMigrate(&models.Wallet{}, &models.WalletTransaction{})
+	DB.AutoMigrate(&models.Wallet{}, &models.WalletTransaction{}, &models.WalletLink{})
 }

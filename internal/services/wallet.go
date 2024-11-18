@@ -4,6 +4,8 @@ import (
 	"context"
 	"ewallet-wallet/internal/interfaces"
 	"ewallet-wallet/internal/models"
+	"fmt"
+	"math/rand"
 
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
@@ -104,6 +106,21 @@ func (s *WalletService) GetBalance(ctx context.Context, userID int) (models.Bala
 	return resp, nil
 }
 
+func (s *WalletService) ExGetBalance(ctx context.Context, walletID int) (models.BalanceResponse, error) {
+	var (
+		resp models.BalanceResponse
+	)
+
+	wallet, err := s.WalletRepo.GetWalletByID(ctx, walletID)
+	if err != nil {
+		return resp, errors.Wrap(err, "failed to get wallet")
+	}
+
+	resp.Balance = wallet.Balance
+
+	return resp, nil
+}
+
 func (s *WalletService) GetWalletHistory(ctx context.Context, userID int, param models.WalletHistoryParam) ([]models.WalletTransaction, error) {
 	var (
 		resp []models.WalletTransaction
@@ -121,4 +138,41 @@ func (s *WalletService) GetWalletHistory(ctx context.Context, userID int, param 
 	}
 
 	return resp, nil
+}
+
+func (s *WalletService) CreateWalletLink(ctx context.Context, clientSource string, req *models.WalletLink) (models.WalletStructOTP, error) {
+	req.ClientSource = clientSource
+	req.Status = "pending"
+	req.OTP = fmt.Sprintf("%d", rand.Intn(999999))
+
+	resp := models.WalletStructOTP{
+		OTP: req.OTP,
+	}
+
+	err := s.WalletRepo.InsertWalletLink(ctx, req)
+	if err != nil {
+		return resp, errors.Wrap(err, "failed to insert wallet link")
+	}
+	return resp, nil
+}
+
+func (s *WalletService) WalletLinkConfirmation(ctx context.Context, walletID int, clientSource string, otp string) error {
+	walletLink, err := s.WalletRepo.GetWalletLink(ctx, walletID, clientSource)
+	if err != nil {
+		return errors.Wrap(err, "failed to get wallet link")
+	}
+
+	if walletLink.Status != "pending" {
+		return errors.New("wallet status is not pending")
+	}
+
+	if walletLink.OTP != otp {
+		return fmt.Errorf("invalid otp. requested = %s , stored = %s", otp, walletLink.OTP)
+	}
+
+	return s.WalletRepo.UpdateStatusWalletLink(ctx, walletID, clientSource, "linked")
+}
+
+func (s *WalletService) WalletUnlink(ctx context.Context, walletID int, clientSource string) error {
+	return s.WalletRepo.UpdateStatusWalletLink(ctx, walletID, clientSource, "unlinked")
 }
