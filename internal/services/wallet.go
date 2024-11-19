@@ -176,3 +176,44 @@ func (s *WalletService) WalletLinkConfirmation(ctx context.Context, walletID int
 func (s *WalletService) WalletUnlink(ctx context.Context, walletID int, clientSource string) error {
 	return s.WalletRepo.UpdateStatusWalletLink(ctx, walletID, clientSource, "unlinked")
 }
+
+func (s *WalletService) ExternalTransaction(ctx context.Context, req models.ExternalTransactionRequest) (models.BalanceResponse, error) {
+	var (
+		resp models.BalanceResponse
+	)
+
+	history, err := s.WalletRepo.GetWalletTransactionByReference(ctx, req.Reference)
+	if err != nil {
+		if err != gorm.ErrRecordNotFound {
+			return resp, errors.Wrap(err, "failed to check reference")
+		}
+	}
+	if history.ID > 0 {
+		return resp, errors.New("reference is duplicated")
+	}
+
+	amount := req.Amount
+	if req.TransactionType == "DEBIT" {
+		amount = -req.Amount
+	}
+
+	wallet, err := s.WalletRepo.UpdateBalanceByID(ctx, req.WalletID, amount)
+	if err != nil {
+		return resp, errors.Wrap(err, "failed to update balance")
+	}
+
+	walletTrx := &models.WalletTransaction{
+		WalletID:              wallet.ID,
+		Amount:                req.Amount,
+		Reference:             req.Reference,
+		WalletTransactionType: req.TransactionType,
+	}
+	err = s.WalletRepo.CreateWalletTrx(ctx, walletTrx)
+	if err != nil {
+		return resp, errors.Wrap(err, "failed to insert wallet transaction")
+	}
+
+	resp.Balance = wallet.Balance + amount
+
+	return resp, nil
+}

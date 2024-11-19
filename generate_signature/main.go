@@ -11,9 +11,9 @@ import (
 
 func main() {
 	secretKey := "ini_secret_key"
-	timestamp := "2024-11-18T20:28:00+07:00"
-	endpoint := "/wallet/v1/ex/1/unlink"
 	strPayload := ``
+	endpoint := `/wallet/v1/ex/1/unlink`
+	timestamp := `2024-11-18T20:35:00+07:00`
 	re := regexp.MustCompile(`[^a-zA-Z0-9]+`)
 	strPayload = re.ReplaceAllString(strPayload, "")
 	strPayload = strings.ToLower(strPayload) + timestamp + endpoint

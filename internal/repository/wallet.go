@@ -37,6 +37,27 @@ func (r *WalletRepo) UpdateBalance(ctx context.Context, userID int, amount float
 	return wallet, err
 }
 
+func (r *WalletRepo) UpdateBalanceByID(ctx context.Context, walletID int, amount float64) (models.Wallet, error) {
+	var wallet models.Wallet
+	err := r.DB.Transaction(func(tx *gorm.DB) error {
+		err := tx.Raw("SELECT id,balance FROM wallets WHERE id = ? FOR UPDATE", walletID).Scan(&wallet).Error
+		if err != nil {
+			return err
+		}
+
+		if (wallet.Balance + amount) < 0 {
+			return fmt.Errorf("current balance is not enough to perform the transaction: %f - %f", wallet.Balance, amount)
+		}
+
+		err = tx.Exec("UPDATE wallets SET balance = balance + ? WHERE id = ?", amount, walletID).Error
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	return wallet, err
+}
+
 func (r *WalletRepo) CreateWalletTrx(ctx context.Context, walletTrx *models.WalletTransaction) error {
 	return r.DB.Create(walletTrx).Error
 }
